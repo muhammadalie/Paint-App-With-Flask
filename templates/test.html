@@ -1,0 +1,216 @@
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="{{ url_for('static', filename='jquery.min.js')}}"></script>
+<link rel="stylesheet" href="{{ url_for('static',filename='css/bootstrap.min.css')}}">
+<script src="{{ url_for('static',filename='bootstrap.min.js')}}"></script>
+<div class="container">
+	<div class="jumbotron">
+		<h1>Colour Box</h1>
+	</div>
+</head>
+<div id="div">
+<body>
+<div class="center-block">
+<button onclick="rectangle()">Rectangle</button>
+<button onclick="circle()">Circle</button>
+<button onclick="pencil()">Pencil</button>
+<button onclick="erase()">Erase</button>
+
+<select id="color">
+  <option value="red">Red</option>
+  <option value="green">Green</option>
+  <option value="blue">Blue</option>
+  <option value="black">Black</option>
+</select>
+<button id="col" onclick="col()">Take</button>
+<input type="text" name="text" id="name">
+<button id ="btn" onclick="save()">Save</button>
+<input type="text" name="text" id="load">
+<button id ="ld" onclick="save()">Load</button>
+</div>
+
+<br>
+<canvas id="a" class="center-block" width="600" height="400" style="border:10px solid #ff00ff;"></canvas>
+</div>
+</div>
+<script>
+var figurs=[];
+var aaa="disable";
+function rectangle(){
+	aaa="rect";
+};
+function circle(){
+        aaa="circle";
+};
+function triangle(){
+        aaa="triangle";
+};
+
+function pencil(){
+	aaa="pencil";
+};
+function erase(){
+        aaa="erase";
+};
+
+var canvas = document.getElementById('a');
+var ctx = canvas.getContext('2d');
+var mouse = {x: 0, y: 0};
+
+canvas.addEventListener('mousemove', function(e) {
+  mouse.x = e.pageX - this.offsetLeft;
+  mouse.y = e.pageY - this.offsetTop;
+});
+function col(){
+	color=document.getElementById("color").value;
+	ctx.strokeStyle = color;
+	ctx.fillStyle=color;
+};
+canvas.addEventListener('mousedown', function(e) {
+    startx = e.pageX - this.offsetLeft;
+    starty = e.pageY - this.offsetTop;
+
+    ctx.beginPath();
+    if(aaa =="rect"){
+
+    	canvas.addEventListener('mousedown',rect);
+	}
+
+    else if(aaa=="circle"){
+	canvas.addEventListener('mousedown',circ);
+	}
+    else if(aaa=="pencil"){
+        canvas.addEventListener('mousemove',paint);
+        }
+    else if(aaa=="erase"){
+        canvas.addEventListener('mousemove',erase);
+	
+        }
+
+
+
+});
+var rc;
+var rect=function(){
+	canvas.addEventListener('mouseout', function() {
+
+        	canvas.removeEventListener('mousedown',rect);
+		document.getElementById("a").removeEventListener("mouseup",myfunction);
+
+	});
+	canvas.addEventListener('mouseup', myfunction); 
+	function myfunction(){
+               ctx.strokeRect(startx,starty,mouse.x-startx,mouse.y-starty);
+	    rc={type:"rect",c:ctx.strokeStyle,p:[startx,starty],width:mouse.x-startx,height:mouse.y-starty};
+		figurs.push(rc);
+	};
+};
+var circ=function(){
+	var a=mouse.x-startx;
+	var b=mouse.y-starty;
+	canvas.addEventListener('mouseout', function() {
+                canvas.removeEventListener('mousedown',circ);		       
+                document.getElementById("a").removeEventListener("mouseup",myfunction);
+
+        });
+        canvas.addEventListener('mouseup', myfunction); 
+        function myfunction(){
+                ctx.arc(mouse.x,mouse.y,Math.sqrt(Math.pow((mouse.x-startx),2)+Math.pow((mouse.y-starty),2)),0,2*Math.PI);
+              	ctx.stroke();
+		figurs.push({type:"circ",c:ctx.strokeStyle,p:[mouse.x,mouse.y],radius:Math.sqrt(Math.pow((mouse.x-startx),2)+Math.pow((mouse.y-starty),2))});
+        };
+
+
+};
+
+var paint = function() {
+	ctx.lineWidth = 2;
+	ctx.lineJoin = 'round';
+	figurs.push({type:"paint",c:ctx.strokeStyle,p2:[mouse.x,mouse.y],p1:[startx,starty]});    
+
+    	ctx.lineTo(mouse.x, mouse.y);
+    	ctx.stroke();    
+	canvas.addEventListener('mouseup', function() {
+ 
+      		canvas.removeEventListener('mousemove', paint);      
+	});
+
+};
+var erase = function() {
+	ctx.clearRect(0,0,600,400);
+	ctx.fillStyle = "#FFFFFF";
+	figurs=[];
+	canvas.addEventListener('mouseup', function() {
+        	canvas.removeEventListener('mousemove',erase);
+	});
+
+
+};
+function save(){
+alert("done");
+console.log(document.getElementById("name").value)
+};
+</script>
+<script type=text/javascript>
+  $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+</script>
+<script>
+$(document).ready(function(){
+    $("#btn").click(function(){
+        $.getJSON($SCRIPT_ROOT + '/name', {
+        a:document.getElementById("name").value
+      } ,function(data) {
+		if(data.ln==0){
+			
+			fun();
+		}
+		else{
+			alert("this name is allready used");
+		}
+        });
+    });
+});
+
+function fun(){
+for(var i=0;i<figurs.length;i++){
+	$.ajax({
+	  type: "POST",
+	  contentType: "application/json; charset=utf-8",
+	  url: "/translate",
+	  data: JSON.stringify({"name":document.getElementById("name").value,"data":figurs[i]}),
+	  dataType: "json"
+	});};};
+
+$(document).ready(function(){
+    $("#ld").click(function(){
+	$.getJSON($SCRIPT_ROOT + '/add', {
+        a:document.getElementById("load").value
+      } ,function(data) {
+	for(var l=0;l<(data.p1).length;l++){
+		ctx.strokeStyle =data.p1[l]["c"];
+        	ctx.strokeRect(data.p1[l]["p1"],data.p1[l]["p2"],data.p1[l]["w"],data.p1[l]["h"]);
+               	
+	};
+	for(var l=0;l<(data.p2).length;l++){
+		 ctx.strokeStyle =data.p2[l]["c"];
+		 ctx.arc(data.p2[l]["p1"],data.p2[l]["p2"],data.p2[l]["r"],0,2*Math.PI);
+                ctx.stroke();
+	};
+	ctx.beginPath();
+	for(var l=0;l<(data.p3).length;l++){
+		ctx.strokeStyle =data.p3[l]["c"];
+	        ctx.lineWidth = 2;
+	        ctx.lineJoin = 'round';
+  		ctx.lineTo(data.p3[l]["p3"],data.p3[l]["p4"] );	
+		ctx.stroke();	
+	};
+	});
+    });
+});
+
+</script>
+
+</body>
+</html>
